@@ -15,6 +15,41 @@ typedef struct {
 
 }gptHeader;
 
+
+typedef struct {
+
+    uint8_t part_type[16]; // partition type guid
+    uint8_t part_guid[16]; // unique partition guid
+    uint64_t first_lba; // first LBA
+    uint64_t last_lba; // last LBA
+    uint8_t attr_flags[8]; // attribute flags
+    uint8_t part_name[72]; // partition name, 72 bytes
+
+}gptPartEntry; // 총 128byte
+
+void printInfo(gptPartEntry* entry) {
+    printf("partition type GUID: ");
+    for (uint8_t hex : entry->part_type)
+        printf("%02x ", hex);
+    putchar('\n');
+
+    printf("unique partition GUID: ");
+    for (uint8_t hex : entry->part_guid)
+        printf("%02x ", hex);
+    putchar('\n');
+
+    printf("first LBA: ");
+    printf("%llx\n", entry->first_lba);
+
+    printf("last LBA: ");
+    printf("%llx\n", entry->last_lba);
+
+    uint64_t fsize = (entry->last_lba - entry->first_lba) * 512;
+    printf("file size: ");
+    printf("%lld\n", fsize);
+
+}
+
 int main() {
 
     ifstream source;
@@ -28,11 +63,10 @@ int main() {
         return 0;
     }
 
-    // 16 byte씩 읽어들임
-    uint8_t buf[16] = { 0, };
-
+    
     gptHeader header;
 
+    /*
     // gpt header로 이동
     source.seekg(0x200);
     source.read((char*)&header, sizeof(header));
@@ -40,15 +74,34 @@ int main() {
     for (int i = 0; i < 8; i++) {
         printf("%02x ", header.sign[i]);
     }
+    putchar('\n');
+    */
 
+    // gpt partiton table entry 이동
+    source.seekg(0x400);
+
+    // 6개 partition table entry 저장
+    gptPartEntry entry[6];
+    source.read((char*)entry, sizeof(gptPartEntry) * 6);
+
+    uint64_t real_offset;
+    for (int i = 0; i < 6; i++) {
+        printf("partition %d\n", i+1);
+        puts("---------------------------");
+        printInfo(&entry[i]);
+        real_offset = entry[i].first_lba * 512;
+        printf("real offset: %llx\n", real_offset);
+        source.seekg(real_offset + 3);
+        uint8_t fileSys[5];
+        source.read((char*)fileSys, 4);
+        fileSys[4] = '\0';
+        printf("file system: %s\n", fileSys);
+        puts("\n\n");
+    }
+    
 
     
-    /*
-    for (int i = 0; i < 16; i++) {
-        printf("%02x ", buf[i]);
-    }
-    cout << endl;
-    */
+    
     source.close();
     
 
