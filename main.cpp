@@ -1,4 +1,14 @@
-﻿#include "pch.h"
+﻿#include <iostream>
+
+#include <fstream>
+
+#include <string>
+
+// #include <WinSock2.h>
+
+#pragma comment(lib, "ws2_32.lib")
+
+using namespace std;
 
 typedef struct {
 
@@ -81,14 +91,21 @@ int main() {
     source.seekg(0x400);
 
     // 6개 partition table entry 저장
-    gptPartEntry entry[6];
-    source.read((char*)entry, sizeof(gptPartEntry) * 6);
+    gptPartEntry entry[128];
+    source.read((char*)entry, sizeof(gptPartEntry) * 128);
 
     uint64_t real_offset;
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 128; i++) {
+
+        // 할당되지 않은 파티션이 나오면 정지
+        if (entry[i].part_type[0] == 0x00)
+            break;
+
         printf("partition %d\n", i+1);
         puts("---------------------------");
         printInfo(&entry[i]);
+
+        // 실제 디스크 위치 계산
         real_offset = entry[i].first_lba * 512;
         printf("real offset: %llx\n", real_offset);
         source.seekg(real_offset + 3);
